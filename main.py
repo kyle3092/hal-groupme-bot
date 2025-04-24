@@ -1,21 +1,21 @@
 
 import os
 from flask import Flask, request, jsonify
-from openai import OpenAI
+import openai
 from dotenv import load_dotenv
 
-# Optional: Load .env variables in dev/local
+# Optional: Load .env variables locally
 load_dotenv()
 
-# Initialize Flask app
-app = Flask(__name__)
+# Set OpenAI key the old way (works with openai==1.2.4)
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-# Initialize OpenAI client (new-style SDK 1.3.9)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Init Flask
+app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def index():
-    return "🤖 HAL is online and sassy."
+    return "🤖 HAL is standing by (openai==1.2.4)."
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -26,14 +26,14 @@ def ask():
         if not question:
             return jsonify({"error": "No question provided."}), 400
 
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "user", "content": question}],
-            temperature=0.7,
+            temperature=0.7
         )
 
         return jsonify({
-            "answer": response.choices[0].message.content.strip()
+            "answer": response["choices"][0]["message"]["content"].strip()
         })
 
     except Exception as e:
