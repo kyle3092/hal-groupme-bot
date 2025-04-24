@@ -1,13 +1,23 @@
 
 import os
+import requests
 from flask import Flask, request, jsonify
 import openai
 
 # Set OpenAI key
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+GROUPME_BOT_ID = os.environ.get("GROUPME_BOT_ID")
 
 # Init Flask
 app = Flask(__name__)
+
+def post_to_groupme(text):
+    payload = {
+        "bot_id": GROUPME_BOT_ID,
+        "text": text
+    }
+    response = requests.post("https://api.groupme.com/v3/bots/post", json=payload)
+    print("GroupMe POST status:", response.status_code)
 
 @app.route("/", methods=["POST", "GET"])
 def root():
@@ -16,7 +26,7 @@ def root():
 
     try:
         data = request.get_json()
-        print("INCOMING DATA:", data)  # Log the incoming JSON payload
+        print("INCOMING DATA:", data)
 
         message = data.get("text", "").strip()
 
@@ -28,12 +38,13 @@ def root():
                 temperature=0.7
             )
             reply = response["choices"][0]["message"]["content"].strip()
+            post_to_groupme(reply)  # Send reply back to GroupMe
             return jsonify({"response": reply})
 
         return jsonify({"status": "ignored"})
 
     except Exception as e:
-        print("ERROR:", str(e))  # Log the error
+        print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route("/ask", methods=["POST"])
@@ -56,7 +67,7 @@ def ask():
         })
 
     except Exception as e:
-        print("ERROR:", str(e))  # Log the error
+        print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
