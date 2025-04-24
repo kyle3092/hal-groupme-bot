@@ -14,13 +14,14 @@ def root():
     if request.method == "GET":
         return "🤖 HAL is standing by."
 
-    # GroupMe bot webhook logic
-    data = request.get_json()
-    message = data.get("text", "").strip()
+    try:
+        data = request.get_json()
+        print("INCOMING DATA:", data)  # Log the incoming JSON payload
 
-    if message.lower().startswith("bootup hal:"):
-        prompt = message[len("bootup hal:"):].strip()
-        try:
+        message = data.get("text", "").strip()
+
+        if message.lower().startswith("bootup hal:"):
+            prompt = message[len("bootup hal:"):].strip()
             response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
@@ -28,10 +29,12 @@ def root():
             )
             reply = response["choices"][0]["message"]["content"].strip()
             return jsonify({"response": reply})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
 
-    return jsonify({"status": "ignored"})
+        return jsonify({"status": "ignored"})
+
+    except Exception as e:
+        print("ERROR:", str(e))  # Log the error
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -53,6 +56,7 @@ def ask():
         })
 
     except Exception as e:
+        print("ERROR:", str(e))  # Log the error
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
