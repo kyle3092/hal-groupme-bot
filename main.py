@@ -1,41 +1,28 @@
 
 import os
 import openai
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-GROUPME_BOT_ID = os.environ["GROUPME_BOT_ID"]
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 @app.route("/", methods=["POST"])
 def webhook():
     data = request.get_json()
-    if "text" in data and data["sender_type"] != "bot":
-        message_text = data["text"]
+    prompt = data["text"]
 
-        # Basic trigger check
-        if message_text.lower().startswith("bootup hal:"):
-            prompt = message_text.split("bootup hal:", 1)[1].strip()
-
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are HAL, a sassy and funny assistant for a gun range called Top Gun."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            reply = response.choices[0].message.content.strip()
-
-            # Respond back to GroupMe
-            import requests
-            requests.post("https://api.groupme.com/v3/bots/post", json={
-                "bot_id": GROUPME_BOT_ID,
-                "text": reply
-            })
-    return "OK", 200
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are HAL, a helpful and sassy assistant at Top Gun Range."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return jsonify({"text": response.choices[0].message["content"]})
+    except Exception as e:
+        return jsonify({"text": f"Error: {str(e)}"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
