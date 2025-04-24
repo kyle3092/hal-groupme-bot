@@ -1,43 +1,41 @@
-import openai
-import requests
-from flask import Flask, request
+
 import os
+import openai
+from flask import Flask, request
 
 app = Flask(__name__)
 
-GROUPME_BOT_ID = os.environ['GROUPME_BOT_ID']
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+GROUPME_BOT_ID = os.environ["GROUPME_BOT_ID"]
 
 @app.route("/", methods=["POST"])
 def webhook():
     data = request.get_json()
-    if not data:
-        return "No data", 400
+    if "text" in data and data["sender_type"] != "bot":
+        message_text = data["text"]
 
-    message = data.get("text", "")
-    sender = data.get("name", "Someone")
+        # Basic trigger check
+        if message_text.lower().startswith("bootup hal:"):
+            prompt = message_text.split("bootup hal:", 1)[1].strip()
 
-    if message.lower().startswith("bootup hal:"):
-        prompt = message[len("bootup hal:"):].strip()
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are HAL, a sassy and funny assistant for a gun range called Top Gun."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
 
-        openai.api_key = OPENAI_API_KEY
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are HAL, a smart, sassy, and knowledgeable AI assistant for Top Gun Range staff. Be funny but always helpful."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+            reply = response.choices[0].message.content.strip()
 
-        reply = response['choices'][0]['message']['content']
-        send_to_groupme(f"{sender}, HAL says: {reply}")
-
+            # Respond back to GroupMe
+            import requests
+            requests.post("https://api.groupme.com/v3/bots/post", json={
+                "bot_id": GROUPME_BOT_ID,
+                "text": reply
+            })
     return "OK", 200
-
-def send_to_groupme(message):
-    url = "https://api.groupme.com/v3/bots/post"
-    payload = {"bot_id": GROUPME_BOT_ID, "text": message}
-    requests.post(url, json=payload)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
