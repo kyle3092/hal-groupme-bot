@@ -1,7 +1,7 @@
 
 import os
-import openai
 from flask import Flask, request, jsonify
+import openai
 
 app = Flask(__name__)
 
@@ -10,19 +10,23 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 @app.route("/", methods=["POST"])
 def webhook():
     data = request.get_json()
-    prompt = data["text"]
+    user_message = data.get("text", "")
 
-    try:
-        response = openai.ChatCompletion.create(
+    if user_message.lower().startswith("bootup hal:"):
+        prompt = user_message[len("bootup hal:"):].strip()
+
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are HAL, a helpful and sassy assistant at Top Gun Range."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": "You are HAL, an AI assistant for a shooting range."},
+                {"role": "user", "content": prompt},
             ]
         )
-        return jsonify({"text": response.choices[0].message["content"]})
-    except Exception as e:
-        return jsonify({"text": f"Error: {str(e)}"})
+
+        reply = response.choices[0].message.content.strip()
+        return jsonify({"text": reply})
+
+    return jsonify({"text": "Command not recognized."})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=False, host="0.0.0.0", port=8080)
