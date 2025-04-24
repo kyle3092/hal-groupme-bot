@@ -34,11 +34,14 @@ def root():
             prompt = message[len("bootup hal:"):].strip()
             response = openai.ChatCompletion.create(
                 model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {"role": "system", "content": "You are HAL, the AI assistant for Top Gun Range in Houston, Texas. You help staff answer questions about firearm rentals, range safety, event policies, and store procedures. All rentals require valid government-issued ID. First-time shooters must take a safety course. Machine gun rentals require an RSO present and are limited to 3 per group."},
+                    {"role": "user", "content": prompt}
+                ],
                 temperature=0.7
             )
             reply = response["choices"][0]["message"]["content"].strip()
-            post_to_groupme(reply)  # Send reply back to GroupMe
+            post_to_groupme(reply)
             return jsonify({"response": reply})
 
         return jsonify({"status": "ignored"})
@@ -58,7 +61,10 @@ def ask():
 
         response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": question}],
+            messages=[
+                {"role": "system", "content": "You are HAL, the AI assistant for Top Gun Range in Houston, Texas. You help staff answer questions about firearm rentals, range safety, event policies, and store procedures. All rentals require valid government-issued ID. First-time shooters must take a safety course. Machine gun rentals require an RSO present and are limited to 3 per group."},
+                {"role": "user", "content": question}
+            ],
             temperature=0.7
         )
 
