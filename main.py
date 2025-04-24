@@ -1,32 +1,33 @@
-
 import os
+import requests
 from flask import Flask, request, jsonify
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
-
-openai.api_key = os.environ["OPENAI_API_KEY"]
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 @app.route("/", methods=["POST"])
 def webhook():
     data = request.get_json()
-    user_message = data.get("text", "")
+    message_text = data.get("text", "")
+    
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are HAL, an AI assistant for Top Gun Range."},
+            {"role": "user", "content": message_text}
+        ]
+    )
 
-    if user_message.lower().startswith("bootup hal:"):
-        prompt = user_message[len("bootup hal:"):].strip()
+    reply = response.choices[0].message.content
+    groupme_bot_id = os.environ["GROUPME_BOT_ID"]
 
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are HAL, an AI assistant for a shooting range."},
-                {"role": "user", "content": prompt},
-            ]
-        )
+    requests.post("https://api.groupme.com/v3/bots/post", json={
+        "bot_id": groupme_bot_id,
+        "text": reply
+    })
 
-        reply = response.choices[0].message.content.strip()
-        return jsonify({"text": reply})
-
-    return jsonify({"text": "Command not recognized."})
+    return jsonify(status="ok")
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8080)
