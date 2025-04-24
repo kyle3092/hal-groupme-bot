@@ -2,12 +2,8 @@
 import os
 from flask import Flask, request, jsonify
 import openai
-from dotenv import load_dotenv
 
-# Optional: Load .env variables locally
-load_dotenv()
-
-# Set OpenAI key the old way (works with openai==1.2.4)
+# Set OpenAI key (openai==1.2.4 style)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Init Flask
@@ -15,7 +11,7 @@ app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def index():
-    return "🤖 HAL is standing by (openai==1.2.4)."
+    return "🤖 HAL is standing by (no dotenv)."
 
 @app.route("/ask", methods=["POST"])
 def ask():
