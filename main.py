@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Initialize OpenAI client manually
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
-# Assistant ID created from platform.openai.com
+# Assistant ID from platform.openai.com
 CUSTOM_GPT_ID = "asst_q47OlATyb2246GuEBi1iXPYU"
 
 bot_disabled = False
@@ -38,8 +38,9 @@ def webhook():
         )
         reply = response.choices[0].message.content
     except Exception as e:
-        print(f"OpenAI API Error: {e}", flush=True)
-        bot_disabled = True  # Immediately disable bot on ANY error
+        print("❌ OpenAI API Error:", flush=True)
+        print(e, flush=True)
+        bot_disabled = True
         reply = "Critical error detected. HAL is shutting down to prevent spam."
 
     if not bot_disabled or "shutting down" in reply:
