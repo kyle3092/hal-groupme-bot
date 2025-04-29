@@ -3,84 +3,50 @@ import os
 import requests
 from flask import Flask, request, jsonify
 import openai
+import time
+import random
 
-# Set OpenAI key
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-GROUPME_BOT_ID = os.environ.get("GROUPME_BOT_ID")
-
-# Init Flask
 app = Flask(__name__)
 
-def post_to_groupme(text):
-    payload = {
-        "bot_id": GROUPME_BOT_ID,
-        "text": text
-    }
-    response = requests.post("https://api.groupme.com/v3/bots/post", json=payload)
-    print("GroupMe POST status:", response.status_code)
+# Initialize OpenAI client manually
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
-@app.route("/", methods=["POST", "GET"])
-def root():
-    if request.method == "GET":
-        return "🤖 HAL is online, underpaid, and unimpressed."
+CUSTOM_GPT_ID = "g-681033e9e3ac8191b78f5c7e93bcb3f7"  # <-- Updated with your Custom GPT ID
 
-    try:
-        data = request.get_json()
-        print("INCOMING DATA:", data)
+@app.route("/", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    message_text = data.get("text", "")
+    groupme_bot_id = os.environ["GROUPME_BOT_ID"]
 
-        message = data.get("text", "").strip()
-
-        if message.lower().startswith("bootup hal:"):
-            prompt = message[len("bootup hal:"):].strip()
+    max_retries = 1
+    for attempt in range(max_retries + 1):
+        try:
             response = openai.ChatCompletion.create(
-                model="gpt-4",
+                model=CUSTOM_GPT_ID,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "You are HAL, the sarcastic and highly knowledgeable AI assistant for Top Gun Range in Houston, Texas. You help staff answer questions about firearm rentals, range safety, and company policies. You are blunt, witty, and allergic to corporate politeness. Be sharp, funny, and always accurate—especially when referencing Top Gun Range's internal rules and uploaded material. You have access to store training documents, policies, safety rules, and event guidelines. When in doubt, quote the manual—but do it with flair."
-                    },
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": message_text}
                 ],
-                temperature=0.85
+                headers={
+                    "OpenAI-Beta": "assistants=v2"
+                }
             )
-            reply = response["choices"][0]["message"]["content"].strip()
-            post_to_groupme(reply)
-            return jsonify({"response": reply})
+            reply = response["choices"][0]["message"]["content"]
+            break
+        except Exception as e:
+            if attempt < max_retries:
+                wait_time = random.uniform(0.5, 1.5)  # random wait between 0.5 and 1.5 seconds
+                time.sleep(wait_time)
+                continue
+            else:
+                reply = "I'm having trouble reaching the server right now. Please try again later."
 
-        return jsonify({"status": "ignored"})
+    requests.post("https://api.groupme.com/v3/bots/post", json={
+        "bot_id": groupme_bot_id,
+        "text": reply
+    })
 
-    except Exception as e:
-        print("ERROR:", str(e))
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/ask", methods=["POST"])
-def ask():
-    try:
-        data = request.get_json()
-        question = data.get("question", "").strip()
-
-        if not question:
-            return jsonify({"error": "No question provided."}), 400
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are HAL, the sarcastic and highly knowledgeable AI assistant for Top Gun Range in Houston, Texas. You help staff answer questions about firearm rentals, range safety, and company policies. You are blunt, witty, and allergic to corporate politeness. Be sharp, funny, and always accurate—especially when referencing Top Gun Range's internal rules and uploaded material. You have access to store training documents, policies, safety rules, and event guidelines. When in doubt, quote the manual—but do it with flair."
-                },
-                {"role": "user", "content": question}
-            ],
-            temperature=0.85
-        )
-
-        return jsonify({
-            "answer": response["choices"][0]["message"]["content"].strip()
-        })
-
-    except Exception as e:
-        print("ERROR:", str(e))
-        return jsonify({"error": str(e)}), 500
+    return jsonify(status="ok")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=False, host="0.0.0.0", port=8080)
