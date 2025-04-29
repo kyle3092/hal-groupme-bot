@@ -2,12 +2,9 @@
 import os
 import requests
 from flask import Flask, request, jsonify
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
-
-# Initialize OpenAI client manually
-openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # Assistant ID from platform.openai.com
 CUSTOM_GPT_ID = "asst_q47OlATyb2246GuEBi1iXPYU"
@@ -26,7 +23,7 @@ def webhook():
     groupme_bot_id = os.environ["GROUPME_BOT_ID"]
 
     try:
-        client = openai.OpenAI(api_key=openai.api_key)
+        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         response = client.chat.completions.create(
             model=CUSTOM_GPT_ID,
             messages=[
